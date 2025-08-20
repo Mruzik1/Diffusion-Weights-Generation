@@ -134,7 +134,7 @@ if __name__ == "__main__":
     sys.path.append(os.getcwd())
     parser = get_parser()
     opt, unknown = parser.parse_known_args()
-    nowname= opt.name+now
+    nowname = opt.name + now
     configs = [OmegaConf.load(opt.base)]
     cli = OmegaConf.from_dotlist(unknown)
     config = OmegaConf.merge(*configs, cli)
