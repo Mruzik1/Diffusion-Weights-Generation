@@ -1,2 +1,3 @@
 # Diffusion-Weights-Generation
-Diffusion-Based Neural Network Weights Generation
+Replication an approach for generating neural network weights described in this paper: "Diffusion-Based Neural Network Weights Generation"
+Working on VAE weights encoding...
