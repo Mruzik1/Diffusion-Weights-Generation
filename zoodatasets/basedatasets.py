@@ -150,7 +150,7 @@ class ZooDataset(Dataset):
         
         for pt_file in pt_files:
             file_path = os.path.join(folder_path, pt_file)
-            data = torch.load(file_path)
+            data = torch.load(file_path, weights_only=False)
             
             processed_samples = []
             for sample in data:

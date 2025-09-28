@@ -188,12 +188,12 @@ def main():
     
     # Create callbacks
     checkpoint_callback = ModelCheckpoint(
-        monitor="train/aeloss",
+        monitor="train/total_loss",
         dirpath=args.save_path,
         filename=f"{run_name}_{{epoch:03d}}",
-        every_n_epochs=10,
         save_top_k=3,
-        mode="min"
+        mode="min",
+        save_last=True
     )
     
     lr_monitor = LearningRateMonitor(logging_interval='step')
@@ -207,28 +207,28 @@ def main():
     
     # Create trainer
     trainer = pl.Trainer(
-        accelerator="gpu" if args.gpus > 0 else "cpu",
-        devices=args.gpus if args.gpus > 0 else 1,
+        gpus=args.gpus if args.gpus > 0 else 0,
         min_epochs=args.min_epochs,
         max_epochs=args.max_epochs,
         precision=args.precision,
         log_every_n_steps=10,
         callbacks=[checkpoint_callback, lr_monitor],
         logger=logger,
-        enable_checkpointing=True,
-        enable_progress_bar=True,
-        enable_model_summary=True
+        checkpoint_callback=True,
+        progress_bar_refresh_rate=1
     )
     
     # Resume from checkpoint if specified
-    ckpt_path = None
     if args.resume and os.path.exists(args.resume):
         ckpt_path = args.resume
         print(f"Resuming from checkpoint: {ckpt_path}")
     
     # Train
     print("Starting training...")
-    trainer.fit(model, datamodule, ckpt_path=ckpt_path)
+    if args.resume and os.path.exists(args.resume):
+        trainer.fit(model, datamodule, resume_from_checkpoint=args.resume)
+    else:
+        trainer.fit(model, datamodule)
     
     print("Training completed!")
     print(f"Best checkpoint: {checkpoint_callback.best_model_path}")

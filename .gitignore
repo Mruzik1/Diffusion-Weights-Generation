@@ -208,3 +208,5 @@ __marimo__/
 
 valid_*.pt
 data
+*logs
+*checkpoints

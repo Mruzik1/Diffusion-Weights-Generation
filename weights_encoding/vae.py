@@ -251,8 +251,8 @@ class VAENoDiscModel(AutoencoderKL):
     def training_step(self, batch, batch_idx):
         forward_result = self(batch)
         inputs, reconstructions, posterior = forward_result[0], forward_result[1], forward_result[2]
-            
-        mse = F.mse_loss(inputs, reconstructions)
+
+        mse = F.mse_loss(inputs, reconstructions.unsqueeze(1))
         aeloss, log_dict_ae = self.loss(inputs, reconstructions, posterior, split="train")
         self.log("train/aeloss", aeloss, prog_bar=True, logger=True, on_step=True, on_epoch=True, sync_dist=True)
         self.log_dict(log_dict_ae, prog_bar=False, logger=True, on_step=True, on_epoch=False, sync_dist=True)

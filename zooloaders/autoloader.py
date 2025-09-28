@@ -1,8 +1,31 @@
 import torchvision.datasets as datasets
 from torch.utils.data import DataLoader
 import pytorch_lightning as pl
+import torch
 
 from zoodatasets.basedatasets import ZooDataset
+
+
+def custom_collate_fn(batch):
+    """Custom collate function to handle ZooDataset batch structure"""
+    # Separate different types of data
+    weights = []
+    model_properties = []
+    datasets = []
+    
+    for sample in batch:
+        weights.append(sample['weight'])
+        model_properties.append(sample['model_properties'])
+        datasets.append(sample['dataset'])
+    
+    # Stack tensors
+    weights = torch.stack(weights, dim=0)
+    
+    return {
+        'weight': weights,
+        'model_properties': model_properties,
+        'dataset': datasets
+    }
 
 
 class ZooDataModule(pl.LightningDataModule):
@@ -64,6 +87,7 @@ class ZooDataModule(pl.LightningDataModule):
             batch_size=self.batch_size,
             num_workers=self.num_workers,
             shuffle=True,
+            collate_fn=custom_collate_fn
         )
 
     def val_dataloader(self):
@@ -72,6 +96,7 @@ class ZooDataModule(pl.LightningDataModule):
             batch_size=self.batch_size,
             num_workers=self.num_workers,
             shuffle=False,
+            collate_fn=custom_collate_fn
         )
 
     def test_dataloader(self):
@@ -80,6 +105,7 @@ class ZooDataModule(pl.LightningDataModule):
             batch_size=self.batch_size,
             num_workers=self.num_workers,
             shuffle=False,
+            collate_fn=custom_collate_fn
         )
 
     # dataloader to evaluate the reconstruction performance on model zoo.
