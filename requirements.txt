@@ -4,6 +4,6 @@ omegaconf==2.3.0
 pytorch_lightning==1.2.6
 PyYAML==6.0.3
 ray==2.49.1
-torch==2.1.0+cu118
-torchvision==0.16.0+cu118
+torch==2.8.0+cu126
+torchvision==0.23.0+cu126
 tqdm==4.66.1
