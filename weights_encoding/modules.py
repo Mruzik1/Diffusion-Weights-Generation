@@ -287,7 +287,7 @@ class Decoder(nn.Module):
         # compute block_in and curr_res at lowest res
         block_in = ch * ch_mult[self.num_resolutions-1]
         curr_res = resolution // 2**(self.num_resolutions-1)
-        self.z_shape = (1,z_channels,curr_res,curr_res)
+        self.z_shape = (1, z_channels, curr_res, curr_res)
         print(f"Working with z of shape {self.z_shape} = {np.prod(self.z_shape)} dimensions.")
         self.fc_out = nn.Linear(self.fdim, self.in_dim)
 
