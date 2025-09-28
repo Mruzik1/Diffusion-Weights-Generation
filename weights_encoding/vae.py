@@ -5,6 +5,7 @@ import pytorch_lightning as pl
 from weights_encoding.modules import Encoder, Decoder
 from weights_encoding.distributions import DiagonalGaussianDistribution
 from utils.util import instantiate_from_config
+from zoodatasets.basedatasets import reconstruct_weights
 
 
 class AutoencoderKL(pl.LightningModule):
@@ -65,26 +66,61 @@ class AutoencoderKL(pl.LightningModule):
 
     def forward(self, input, sample_posterior=True):
         if isinstance(input, dict):
-            input = input[self.input_key].to(self.devices)
-        posterior = self.encode(input)
+            input_tensor = input[self.input_key].to(self.devices)
+            model_properties = input.get('model_properties', None)
+        else:
+            input_tensor = input.to(self.devices)
+            model_properties = None
+            
+        posterior = self.encode(input_tensor)
         if sample_posterior:
             z = posterior.sample()
         else:
             z = posterior.mode()
         dec = self.decode(z)
-        return input, dec, posterior
+        
+        # Return additional info for reconstruction if available
+        if model_properties is not None:
+            return input_tensor, dec, posterior, model_properties
+        return input_tensor, dec, posterior
 
     def get_input(self, batch, k):
         x = batch[k].to(self.devices)
-        # print(x.shape)
-        # if len(x.shape) == 3:
-        #     x = x[..., None]
-        # x = x.permute(0, 3, 1, 2).to(memory_format=torch.contiguous_format).float()
+        
+        # Handle ZooDataset weight format - already flattened and padded
+        if len(x.shape) == 2:  # [batch_size, max_len]
+            # Reshape for conv layers: [batch_size, 1, height, width]
+            # Assuming square-like dimensions for conv operations
+            batch_size = x.shape[0]
+            seq_len = x.shape[1]
+            
+            # Find appropriate height/width for reshaping
+            # Use a reasonable aspect ratio for the weight data
+            import math
+            sqrt_len = int(math.sqrt(seq_len))
+            height = sqrt_len
+            width = seq_len // height
+            
+            # Pad if necessary to make it rectangular
+            if height * width < seq_len:
+                width += 1
+                pad_size = height * width - seq_len
+                x = F.pad(x, (0, pad_size), "constant", 0)
+            
+            x = x.view(batch_size, 1, height, width)
+            
+        elif len(x.shape) == 3:
+            x = x.unsqueeze(1)  # Add channel dimension
+        
+        x = x.to(memory_format=torch.contiguous_format).float()
         return x
 
     def training_step(self, batch, batch_idx, optimizer_idx):
         inputs = self.get_input(batch, self.input_key)
-        reconstructions, posterior = self(inputs)
+        
+        # Forward pass with batch to get model_properties if available
+        forward_result = self(batch)
+        reconstructions, posterior = forward_result[1], forward_result[2]
 
         if optimizer_idx == 0:
             # train encoder + decoder + logvar
@@ -119,7 +155,11 @@ class AutoencoderKL(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         inputs = self.get_input(batch, self.input_key)
-        reconstructions, posterior = self(inputs)
+        
+        # Forward pass with batch to get model_properties if available
+        forward_result = self(batch)
+        reconstructions, posterior = forward_result[1], forward_result[2]
+            
         aeloss, log_dict_ae = self.loss(
             inputs,
             reconstructions,
@@ -160,6 +200,29 @@ class AutoencoderKL(pl.LightningModule):
     def get_last_layer(self):
         return self.decoder.conv_out.weight
 
+    def reconstruct_to_model_weights(self, reconstructed_weights, model_properties):
+        if "layer_info" not in model_properties:
+            return None
+            
+        batch_size = reconstructed_weights.shape[0]
+        results = []
+        
+        for i in range(batch_size):
+            # Flatten the reconstructed weights back to 1D
+            weights_1d = reconstructed_weights[i].flatten()
+            
+            # Get layer info for this sample
+            if isinstance(model_properties, list):
+                layer_info = model_properties[i]["layer_info"]
+            else:
+                layer_info = model_properties["layer_info"]
+            
+            # Reconstruct using the imported function
+            reconstructed_state_dict = reconstruct_weights(weights_1d, layer_info)
+            results.append(reconstructed_state_dict)
+        
+        return results
+
 
 class VAENoDiscModel(AutoencoderKL):
     def __init__(
@@ -186,7 +249,9 @@ class VAENoDiscModel(AutoencoderKL):
         self.devices = device
 
     def training_step(self, batch, batch_idx):
-        inputs, reconstructions, posterior = self(batch)
+        forward_result = self(batch)
+        inputs, reconstructions, posterior = forward_result[0], forward_result[1], forward_result[2]
+            
         mse = F.mse_loss(inputs, reconstructions)
         aeloss, log_dict_ae = self.loss(inputs, reconstructions, posterior, split="train")
         self.log("train/aeloss", aeloss, prog_bar=True, logger=True, on_step=True, on_epoch=True, sync_dist=True)
@@ -194,7 +259,9 @@ class VAENoDiscModel(AutoencoderKL):
         return aeloss + 1000.0 * mse
 
     def validation_step(self, batch, batch_idx):
-        inputs, reconstructions, posterior = self(batch)
+        forward_result = self(batch)
+        inputs, reconstructions, posterior = forward_result[0], forward_result[1], forward_result[2]
+            
         aeloss, log_dict_ae = self.loss(inputs, reconstructions, posterior, split="val")
         self.log("val/rec_loss", log_dict_ae["val/rec_loss"], sync_dist=True)
         return self.log_dict

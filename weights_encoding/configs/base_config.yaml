@@ -28,9 +28,10 @@ model:
 data:
   target: zooloaders.autoloader.ZooDataModule
   params:
-    data_dir: 'pretrained weights'
-    batch_size: 64
-    num_workers: 8
+    data_dir: 'model_data'
+    data_root: 'model_data/data'
+    batch_size: 32
+    num_workers: 4
     scale: 1.0
     dataset: "joint"
     topk: null

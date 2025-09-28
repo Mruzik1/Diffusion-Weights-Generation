@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from attention import AttnBlock, LinAttnBlock
+from weights_encoding.attention import AttnBlock, LinAttnBlock
 from utils.util import normalize
 
 

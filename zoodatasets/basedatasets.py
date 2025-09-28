@@ -167,11 +167,20 @@ class ZooDataset(Dataset):
 
                 w = torch.cat(weight_tensors, dim=0)
 
-                if len(w.shape) < 2:
-                    w = w.unsqueeze(0)
-
-                if w.shape[-1] < self.max_len:
-                    w = matpadder(w, self.max_len)
+                # Ensure tensor is 1D, then pad to max_len
+                if len(w.shape) > 1:
+                    w = w.flatten()
+                
+                # Pad or truncate to max_len
+                if w.shape[0] < self.max_len:
+                    # Pad with zeros
+                    w = F.pad(w, (0, self.max_len - w.shape[0]), "constant", 0)
+                elif w.shape[0] > self.max_len:
+                    # Truncate to max_len
+                    w = w[:self.max_len]
+                
+                # Add batch dimension
+                w = w.unsqueeze(0)
 
                 if self.topk is not None:
                     w = w[:self.topk]

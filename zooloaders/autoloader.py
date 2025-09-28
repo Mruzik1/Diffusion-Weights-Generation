@@ -19,16 +19,41 @@ class ZooDataModule(pl.LightningDataModule):
         self.scale = scale
 
     def prepare_data(self):
-        datasets.CIFAR10(self.data_root, train=True, download=True)
-        datasets.CIFAR10(self.data_root, train=False, download=True)
+        # Only download if needed, and check if data_root exists
+        import os
+        if os.path.exists(self.data_root):
+            try:
+                datasets.CIFAR10(self.data_root, train=True, download=True)
+                datasets.CIFAR10(self.data_root, train=False, download=True)
+            except:
+                print(f"Warning: Could not download CIFAR10 to {self.data_root}")
 
     def setup(self, stage):
         if stage == "fit":
-            self.trainset = ZooDataset(root=self.data_dir, dataset=self.dataset, split="train", scale=self.scale, topk=self.topk)
-            self.valset = ZooDataset(root=self.data_dir, dataset=self.dataset, split="val", scale=self.scale)
+            self.trainset = ZooDataset(
+                root=self.data_dir, 
+                dataset=self.dataset, 
+                split="train", 
+                scale=self.scale, 
+                topk=self.topk,
+                normalize=self.normalize
+            )
+            self.valset = ZooDataset(
+                root=self.data_dir, 
+                dataset=self.dataset, 
+                split="val", 
+                scale=self.scale,
+                normalize=self.normalize
+            )
 
         if stage == "test":
-            self.testset = ZooDataset(root=self.data_dir, dataset=self.dataset, split="test", scale=self.scale)
+            self.testset = ZooDataset(
+                root=self.data_dir, 
+                dataset=self.dataset, 
+                split="test", 
+                scale=self.scale,
+                normalize=self.normalize
+            )
 
         if stage == "predict":
             pass
