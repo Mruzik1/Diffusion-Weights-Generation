@@ -55,6 +55,26 @@ def reconstruct_weights(flattened_weights, layer_info):
     return reconstructed
 
 
+def reconstruct_from_chunks(chunks, original_length):
+    """
+    Reconstruct full weight tensor from multiple chunks
+    
+    Args:
+        chunks: list of weight tensors (each should be 1D and padded to max_len)
+        original_length: the original length of the full weight tensor
+    
+    Returns:
+        1D tensor: reconstructed full weight tensor
+    """
+    # Concatenate all chunks
+    full_weights = torch.cat([chunk.flatten() for chunk in chunks], dim=0)
+    
+    # Truncate to original length (removes padding from last chunk)
+    full_weights = full_weights[:original_length]
+    
+    return full_weights
+
+
 ################### Classes ###################
 class ZooDataset(Dataset):
     def __init__(
@@ -63,15 +83,13 @@ class ZooDataset(Dataset):
         dataset="joint",
         split="train",
         scale=1.0,
-        topk=None,
         transform=None,
         normalize=False,
-        max_len=2864
+        max_len=11000
     ):
         """ Weights dataset """
         super(ZooDataset, self).__init__()
         self.dataset = dataset
-        self.topk = topk
 
         self.max_len = max_len
         self.normalize = normalize
@@ -167,27 +185,51 @@ class ZooDataset(Dataset):
 
                 w = torch.cat(weight_tensors, dim=0)
 
-                # Ensure tensor is 1D, then pad to max_len
+                # Ensure tensor is 1D
                 if len(w.shape) > 1:
                     w = w.flatten()
                 
-                # Pad or truncate to max_len
-                if w.shape[0] < self.max_len:
-                    # Pad with zeros
-                    w = F.pad(w, (0, self.max_len - w.shape[0]), "constant", 0)
-                elif w.shape[0] > self.max_len:
-                    # Truncate to max_len
-                    w = w[:self.max_len]
+                original_length = w.shape[0]
                 
-                # Add batch dimension
-                w = w.unsqueeze(0)
+                # Chunk or pad based on size
+                if original_length > self.max_len:
+                    # Chunk into multiple samples
+                    num_chunks = (original_length + self.max_len - 1) // self.max_len  # ceiling division
+                    
+                    for chunk_idx in range(num_chunks):
+                        start_idx = chunk_idx * self.max_len
+                        end_idx = min((chunk_idx + 1) * self.max_len, original_length)
+                        
+                        chunk = w[start_idx:end_idx]
+                        
+                        # Pad the last chunk if needed
+                        if chunk.shape[0] < self.max_len:
+                            chunk = F.pad(chunk, (0, self.max_len - chunk.shape[0]), "constant", 0)
+                        
+                        # Add batch dimension
+                        chunk = chunk.unsqueeze(0)
+                        
+                        # Create chunk-specific properties
+                        chunk_properties = model_properties.copy()
+                        chunk_properties["layer_info"] = layer_info
+                        chunk_properties["chunk_idx"] = chunk_idx
+                        chunk_properties["num_chunks"] = num_chunks
+                        chunk_properties["original_length"] = original_length
+                        
+                        processed_samples.append((chunk_properties, chunk))
+                else:
+                    # Pad with zeros if smaller than max_len
+                    w = F.pad(w, (0, self.max_len - w.shape[0]), "constant", 0)
+                    
+                    # Add batch dimension
+                    w = w.unsqueeze(0)
 
-                if self.topk is not None:
-                    w = w[:self.topk]
-
-                # store layer info in model_properties for reconstruction
-                model_properties["layer_info"] = layer_info
-                processed_samples.append((model_properties, w))
+                    # Store layer info in model_properties for reconstruction
+                    model_properties["layer_info"] = layer_info
+                    model_properties["chunk_idx"] = 0
+                    model_properties["num_chunks"] = 1
+                    model_properties["original_length"] = original_length
+                    processed_samples.append((model_properties, w))
             
             file_data.append(processed_samples)
             file_lengths.append(len(processed_samples))
@@ -210,18 +252,32 @@ if __name__ == "__main__":
             print(f"Weight shape: {sample['weight'].shape}")
             print(f"Model properties type: {type(sample['model_properties'])}")
             
+            # Check for chunking information
+            props = sample['model_properties']
+            if 'num_chunks' in props:
+                print(f"\nChunking info:")
+                print(f"  Chunk {props.get('chunk_idx', 0) + 1}/{props.get('num_chunks', 1)}")
+                print(f"  Original length: {props.get('original_length', 'unknown')}")
+                
+                if props.get('num_chunks', 1) > 1:
+                    print(f"  This model is chunked into {props['num_chunks']} samples")
+            
             # test reconstruction
             if "layer_info" in sample["model_properties"]:
                 print("\nTesting weight reconstruction...")
                 flattened_weights = sample["weight"].squeeze(0)
                 layer_info = sample["model_properties"]["layer_info"]
+                original_length = sample["model_properties"].get("original_length", len(flattened_weights))
+                
+                # Truncate to original length (remove padding)
+                flattened_weights = flattened_weights[:original_length]
                 
                 reconstructed = reconstruct_weights(flattened_weights, layer_info)
                 print(f"Reconstructed state_dict keys: {list(reconstructed.keys())}")
                 print(f"Number of layers reconstructed: {len(reconstructed)}")
                 
                 # check if shapes match original layer info
-                for i, (layer_name, original_shape) in enumerate(layer_info):
+                for i, (layer_name, original_shape) in enumerate(layer_info[:3]):  # Show first 3 layers
                     if layer_name in reconstructed:
                         reconstructed_shape = reconstructed[layer_name].shape
                         print(f"Layer {layer_name}: original {original_shape} -> reconstructed {reconstructed_shape}")
@@ -231,13 +287,15 @@ if __name__ == "__main__":
 
         # test val split
         val_dataset = ZooDataset(split="val")
-        print(f"Val dataset length: {len(val_dataset)}")
+        print(f"\nVal dataset length: {len(val_dataset)}")
 
         # test test split
         test_dataset = ZooDataset(split="test")
         print(f"Test dataset length: {len(test_dataset)}")
 
-        print("Dataset sanity test passed!")
+        print("\nDataset sanity test passed!")
 
     except Exception as e:
         print(f"Dataset sanity test failed: {e}")
+        import traceback
+        traceback.print_exc()

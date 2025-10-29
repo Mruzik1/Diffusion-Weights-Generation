@@ -1,0 +1,169 @@
+================================================================================
+VAE WEIGHT RECONSTRUCTION ACCURACY TEST
+================================================================================
+
+This script tests the full VAE reconstruction pipeline:
+  Original → Encode → Decode → Reconstruct → Evaluate
+
+Device: cuda
+VAE checkpoint: vae_checkpoints/last.ckpt
+
+--------------------------------------------------------------------------------
+Loading VAE from: vae_checkpoints/last.ckpt
+making attention of type 'vanilla' with 256 in_channels
+Working with z of shape (1, 4, 16, 16) = 1024 dimensions.
+making attention of type 'vanilla' with 256 in_channels
+✓ VAE loaded successfully
+
+--------------------------------------------------------------------------------
+Loading dataset...
+Loaded 4 files with 152371 total samples for train split
+Loaded 4 files with 18832 total samples for val split
+✓ Loaded datasets
+  Train: 152371 samples, Val: 18832 samples
+  Scale: 1.0, Max length: 11000
+
+================================================================================
+TESTING VAE RECONSTRUCTION ON SAMPLES
+================================================================================
+
+--- Testing 2 samples from TRAIN split ---
+
+================================================================================
+Testing Model: mnist | Chunks: 1 | Params: 2,464
+================================================================================
+
+1. Reconstructing and evaluating ORIGINAL model...
+   ✓ Original accuracy: 87.16%
+
+2. Encoding and decoding through VAE (1 chunk(s))...
+   ✓ Encoded and decoded 1 chunk
+
+3. Reconstructing full weights from decoded chunks...
+   ✓ Reconstructed weights shape: torch.Size([2464])
+   ✓ Expected length: 2464
+
+4. Reconstructing state_dict from weights...
+   ✓ Reconstructed 10 layers
+
+5. Evaluating RECONSTRUCTED model...
+   ✓ Reconstructed accuracy: 9.80%
+
+================================================================================
+RESULTS:
+  Original accuracy:      87.16%
+  Reconstructed accuracy: 9.80%
+  Absolute difference:    77.36%
+  Recovery rate:          11.2%
+  ✗ POOR: <50% recovery
+================================================================================
+
+================================================================================
+Testing Model: mnist | Chunks: 1 | Params: 2,464
+================================================================================
+
+1. Reconstructing and evaluating ORIGINAL model...
+   ✓ Original accuracy: 6.60%
+
+2. Encoding and decoding through VAE (1 chunk(s))...
+   ✓ Encoded and decoded 1 chunk
+
+3. Reconstructing full weights from decoded chunks...
+   ✓ Reconstructed weights shape: torch.Size([2464])
+   ✓ Expected length: 2464
+
+4. Reconstructing state_dict from weights...
+   ✓ Reconstructed 10 layers
+
+5. Evaluating RECONSTRUCTED model...
+   ✓ Reconstructed accuracy: 9.80%
+
+================================================================================
+RESULTS:
+  Original accuracy:      6.60%
+  Reconstructed accuracy: 9.80%
+  Absolute difference:    3.20%
+  Recovery rate:          148.5%
+  ✓ EXCELLENT: >90% recovery
+================================================================================
+
+--- Testing 2 samples from VAL split ---
+
+================================================================================
+Testing Model: mnist | Chunks: 1 | Params: 2,464
+================================================================================
+
+1. Reconstructing and evaluating ORIGINAL model...
+   ✓ Original accuracy: 76.04%
+
+2. Encoding and decoding through VAE (1 chunk(s))...
+   ✓ Encoded and decoded 1 chunk
+
+3. Reconstructing full weights from decoded chunks...
+   ✓ Reconstructed weights shape: torch.Size([2464])
+   ✓ Expected length: 2464
+
+4. Reconstructing state_dict from weights...
+   ✓ Reconstructed 10 layers
+
+5. Evaluating RECONSTRUCTED model...
+   ✓ Reconstructed accuracy: 9.80%
+
+================================================================================
+RESULTS:
+  Original accuracy:      76.04%
+  Reconstructed accuracy: 9.80%
+  Absolute difference:    66.24%
+  Recovery rate:          12.9%
+  ✗ POOR: <50% recovery
+================================================================================
+
+================================================================================
+Testing Model: mnist | Chunks: 1 | Params: 2,464
+================================================================================
+
+1. Reconstructing and evaluating ORIGINAL model...
+   ✓ Original accuracy: 9.64%
+
+2. Encoding and decoding through VAE (1 chunk(s))...
+   ✓ Encoded and decoded 1 chunk
+
+3. Reconstructing full weights from decoded chunks...
+   ✓ Reconstructed weights shape: torch.Size([2464])
+   ✓ Expected length: 2464
+
+4. Reconstructing state_dict from weights...
+   ✓ Reconstructed 10 layers
+
+5. Evaluating RECONSTRUCTED model...
+   ✓ Reconstructed accuracy: 9.80%
+
+================================================================================
+RESULTS:
+  Original accuracy:      9.64%
+  Reconstructed accuracy: 9.80%
+  Absolute difference:    0.16%
+  Recovery rate:          101.7%
+  ✓ EXCELLENT: >90% recovery
+================================================================================
+
+================================================================================
+SUMMARY OF ALL TESTS
+================================================================================
+
+Tested 4 model(s):
+
+Dataset         Chunks   Params       Original%    Reconstructed%   Recovery%    Status    
+-----------------------------------------------------------------------------------------------
+mnist           1        2,464        87.16        9.80             11.2         POOR      
+mnist           1        2,464        6.60         9.80             148.5        EXCELLENT 
+mnist           1        2,464        76.04        9.80             12.9         POOR      
+mnist           1        2,464        9.64         9.80             101.7        EXCELLENT 
+
+-----------------------------------------------------------------------------------------------
+Average recovery rate: 68.6%
+Status distribution: 2 excellent, 0 good, 0 fair, 2 poor
+
+================================================================================
+⚠ OVERALL: FAIR - VAE reconstruction needs improvement
+================================================================================

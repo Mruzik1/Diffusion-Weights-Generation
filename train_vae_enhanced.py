@@ -39,8 +39,6 @@ def get_parser(**parser_kwargs):
                        help="Root directory containing the weights folder")
     parser.add_argument("--dataset", default="joint", type=str, 
                        help="Dataset choice among [mnist, svhn, cifar10, stl10, joint]")
-    parser.add_argument("--topk", default=None, type=int, 
-                       help="Number of top samples per dataset")
     parser.add_argument("--scale", default=1.0, type=float, 
                        help="Scale factor for weight values")
     parser.add_argument("--normalize", default=False, type=str2bool, 
@@ -108,8 +106,8 @@ def create_dynamic_config(args):
                     'num_res_blocks': 2,
                     'attn_resolutions': [2, 4],
                     'dropout': 0.0,
-                    'in_dim': 2864,
-                    'fdim': 4096
+                    'in_dim': 11000,
+                    'fdim': 16384
                 }
             }
         },
@@ -122,7 +120,6 @@ def create_dynamic_config(args):
                 'num_workers': args.num_workers,
                 'scale': args.scale,
                 'dataset': args.dataset,
-                'topk': args.topk,
                 'normalize': args.normalize,
                 'num_sample': 5
             }
@@ -163,7 +160,6 @@ def main():
         config.data.params.num_workers = args.num_workers
         config.data.params.dataset = args.dataset
         config.data.params.scale = args.scale
-        config.data.params.topk = args.topk
         config.data.params.normalize = args.normalize
         config.model.params.learning_rate = args.learning_rate
         config.model.params.embed_dim = args.embed_dim

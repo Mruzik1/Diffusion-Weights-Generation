@@ -24,7 +24,6 @@ def get_parser(**parser_kwargs):
     parser = argparse.ArgumentParser(description="Autoencoder Training")
     parser.add_argument("--data_dir", default="../Datasets/minizoo", type=str, help="dataset root")
     parser.add_argument("--data_root", default="../Datasets/", type=str, help="dataset root for cifar10, mnist, ..")
-    parser.add_argument("--topk", default=30, type=int, help="number of sample per dataset in training loader")
     parser.add_argument("--dataset", default="joint", type=str, help="dataset choice amoung"
                                                                      " [mnist, svhn, cifar10, stl10, joint")
     parser.add_argument("--split", default="train", type=str, help="dataset split{ train, test, val]")

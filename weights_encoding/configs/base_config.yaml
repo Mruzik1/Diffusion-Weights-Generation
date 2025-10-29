@@ -5,14 +5,14 @@ model:
     embed_dim: 4
     input_key: 'weight'
     learning_rate: 1.115e-3
-    device: 'cpu'
+    device: 'cuda'
     lossconfig:
       target: weights_encoding.losses.custom_losses.MyLoss
       params:
-        kl_weight: 0.000001
+        kl_weight: 0.005
     ddconfig:
       double_z: True
-      z_channels: 4
+      z_channels: 16
       resolution: 64
       in_channels: 1
       my_channels: 1
@@ -22,8 +22,8 @@ model:
       num_res_blocks: 2
       attn_resolutions: [ 2, 4 ]
       dropout: 0.0
-      in_dim: 2864
-      fdim: 4096
+      in_dim: 11000
+      fdim: 16384
 
 data:
   target: zooloaders.autoloader.ZooDataModule
@@ -34,7 +34,6 @@ data:
     num_workers: 4
     scale: 1.0
     dataset: "joint"
-    topk: null
     normalize: False
     num_sample: 5
 

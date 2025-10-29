@@ -29,14 +29,13 @@ def custom_collate_fn(batch):
 
 
 class ZooDataModule(pl.LightningDataModule):
-    def __init__(self, dataset, data_dir, data_root, batch_size, num_workers, scale, num_sample, topk, normalize):
+    def __init__(self, dataset, data_dir, data_root, batch_size, num_workers, scale, num_sample, normalize):
         super().__init__()
         self.data_dir = data_dir
         self.data_root = data_root
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.dataset = dataset
-        self.topk = topk
         self.normalize = normalize
         self.num_sample = num_sample
         self.scale = scale
@@ -58,7 +57,6 @@ class ZooDataModule(pl.LightningDataModule):
                 dataset=self.dataset, 
                 split="train", 
                 scale=self.scale, 
-                topk=self.topk,
                 normalize=self.normalize
             )
             self.valset = ZooDataset(
